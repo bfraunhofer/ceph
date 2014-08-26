@@ -127,7 +127,7 @@ public:
     if (header.version >= 2)
       ::decode(compat, p);
     if (header.version >= 3) {
-      ::decode(health, payload);
+      ::decode(health, p);
     }
   }
 };
