@@ -136,6 +136,12 @@ private:
  public:
   LogMonitor(Monitor *mn, Paxos *p, const string& service_name) 
     : PaxosService(mn, p, service_name) { }
+
+  void init() {
+    generic_dout(10) << "LogMonitor::init" << dendl;
+    g_conf->add_observer(this);
+    update_log_channels();
+  }
   
   void tick();  // check state, take actions
 
@@ -149,6 +155,10 @@ private:
    * @return id, or -1 if unrecognized
    */
   int sub_name_to_id(const string& n);
+
+  void on_shutdown() {
+    g_conf->remove_observer(this);
+  }
 
   const char **get_tracked_conf_keys() const {
     static const char* KEYS[] = {
