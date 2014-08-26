@@ -16,6 +16,8 @@
 #include "common/dout.h"
 #include "messages/MMDSBeacon.h"
 #include "mon/MonClient.h"
+#include "mds/MDS.h"
+#include "mds/MDLog.h"
 
 #include "Beacon.h"
 
@@ -157,8 +159,7 @@ void Beacon::_send()
 
   beacon->set_standby_for_rank(standby_for_rank);
   beacon->set_standby_for_name(standby_for_name);
-
-  // include _my_ feature set
+  beacon->set_health(health);
   beacon->set_compat(compat);
 
   monc->send_mon_message(beacon);
@@ -223,4 +224,17 @@ void Beacon::notify_want_state(MDSMap::DaemonState const newstate)
   want_state = newstate;
 }
 
+
+/**
+ * We are 'shown' an MDS briefly in order to update
+ * some health metrics that we will send in the next
+ * beacon.
+ */
+void Beacon::notify_health(MDS const *mds)
+{
+  assert(mds->mds_lock.is_locked_by_me());
+
+  health.log_segment_count = mds->mdlog->get_num_segments();
+  health.log_max_segments = g_conf->mds_log_max_segments;
+}
 

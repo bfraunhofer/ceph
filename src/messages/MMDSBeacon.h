@@ -23,9 +23,35 @@
 
 #include <uuid/uuid.h>
 
+
+/**
+ * Health metrics send by the MDS to the mon, so that the mon can generate
+ * user friendly warnings about undesirable states.
+ */
+struct MDSHealth
+{
+  // In order that we can indicate to the user
+  // if the MDS is too far behind trimming
+  uint32_t log_segment_count;
+  uint32_t log_max_segments;
+
+  void encode(bufferlist& bl) const {
+    ::encode(log_segment_count, bl);
+    ::encode(log_max_segments, bl);
+  }
+  
+  void decode(bufferlist::iterator& bl) {
+    ::decode(log_segment_count, bl);
+    ::decode(log_max_segments, bl);
+  }
+
+  MDSHealth() : log_segment_count(0), log_max_segments(0) {}
+};
+WRITE_CLASS_ENCODER(MDSHealth)
+
 class MMDSBeacon : public PaxosServiceMessage {
 
-  static const int HEAD_VERSION = 2;
+  static const int HEAD_VERSION = 3;
 
   uuid_d fsid;
   uint64_t global_id;
@@ -37,6 +63,8 @@ class MMDSBeacon : public PaxosServiceMessage {
   string standby_for_name;
 
   CompatSet compat;
+
+  MDSHealth health;
 
  public:
   MMDSBeacon() : PaxosServiceMessage(MSG_MDS_BEACON, 0, HEAD_VERSION) { }
@@ -59,8 +87,11 @@ public:
   int get_standby_for_rank() { return standby_for_rank; }
   const string& get_standby_for_name() { return standby_for_name; }
 
-  CompatSet& get_compat() { return compat; }
+  CompatSet const& get_compat() const { return compat; }
   void set_compat(const CompatSet& c) { compat = c; }
+
+  MDSHealth const& get_health() const { return health; }
+  void set_health(const MDSHealth &h) { health = h; }
 
   void set_standby_for_rank(int r) { standby_for_rank = r; }
   void set_standby_for_name(string& n) { standby_for_name = n; }
@@ -81,6 +112,7 @@ public:
     ::encode(standby_for_rank, payload);
     ::encode(standby_for_name, payload);
     ::encode(compat, payload);
+    ::encode(health, payload);
   }
   void decode_payload() {
     bufferlist::iterator p = payload.begin();
@@ -94,6 +126,9 @@ public:
     ::decode(standby_for_name, p);
     if (header.version >= 2)
       ::decode(compat, p);
+    if (header.version >= 3) {
+      ::decode(health, payload);
+    }
   }
 };
 
