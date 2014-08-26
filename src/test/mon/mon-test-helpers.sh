@@ -23,7 +23,7 @@ function setup() {
 function teardown() {
     local dir=$1
     kill_daemons $dir
-    rm -fr $dir
+    [ -d $dir ] && mv $dir $dir.$$    #rm -fr $dir
 }
 
 function run_mon() {
